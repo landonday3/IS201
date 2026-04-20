@@ -1,0 +1,54 @@
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background-color: #4c7c4c;
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+/* ADD THIS BACK IN! */
+.site-container {
+    width: 80%;
+    max-width: 1200px;
+    margin: 40px auto; 
+    background-color: #66a15f;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.tiger-header {
+    background-color: #cc0000;
+    color: #ffffff;
+    padding: 50px 20px;
+    text-align: center;
+}
+
+.career-content {
+    padding: 40px;
+    line-height: 1.8;
+}
+
+.stats-box {
+    color: #ffffff;
+    padding: 25px;
+    margin: 20px 40px 40px 40px;
+    border-radius: 5px;
+    font-family: 'Georgia', serif; 
+}
+
+h1, h2, h3 {
+    font-family: 'Arial Black', sans-serif;
+    letter-spacing: 1px;
+}
+
+h2 {
+    color: #ffffff;
+}
+
+.centered-image {
+    display: block;
+    margin: 0 auto;
+    max-width: 50%; 
+    border-radius: 8px; 
+}

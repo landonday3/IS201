@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiger's Mini Golf - 3 Hole Course</title>
+    <style>
+        body {
+            background-color: #4c7c4c;
+            color: #ffffff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            font-family: 'Arial Black', sans-serif;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .scoreboard {
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        /* Wrapper to keep the overlay positioned perfectly over the canvas */
+        .game-container {
+            position: relative;
+            display: inline-block;
+        }
+        canvas {
+            background-color: #66a15f;
+            border: 8px solid #1e4d2b;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            cursor: crosshair;
+            display: block; /* Removes bottom spacing issues */
+        }
+        /* The Overlay Menu Design */
+        #overlay {
+            display: none; /* Hidden by default */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            border-radius: 10px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        #overlay h2 {
+            font-family: 'Arial Black', sans-serif;
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+        .menu-btn {
+            background-color: #cc0000;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            transition: 0.2s;
+        }
+        .menu-btn:hover {
+            background-color: #a30000;
+        }
+        .menu-btn.secondary {
+            background-color: #1e4d2b;
+        }
+        .menu-btn.secondary:hover {
+            background-color: #12331b;
+        }
+        .back-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #cc0000;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Tiger's Mini Golf</h1>
+    <div class="scoreboard">
+        Hole <span id="hole-display">1</span> of 3 | Total Strokes: <span id="total-strokes-display">0</span>
+    </div>
+    
+    <div class="game-container">
+        <canvas id="golfCanvas" width="400" height="500"></canvas>
+        
+        <div id="overlay">
+            <h2 id="overlay-title">Hole in 1!</h2>
+            
+            <div id="hole-buttons">
+                <button class="menu-btn" onclick="nextHole()">Continue to Next Hole</button>
+                <br>
+                <button class="menu-btn secondary" onclick="replayHole()">Replay Hole (Lose Strokes)</button>
+            </div>
+
+            <div id="game-over-buttons" style="display: none;">
+                <p id="final-score-text" style="font-size: 20px; margin-bottom: 20px;"></p>
+                <button class="menu-btn" onclick="restartGame()">Play Course Again</button>
+            </div>
+        </div>
+    </div>
+    
+    <br>
+    <a href="fromScratch.html" class="back-btn">Back to Previous Site</a>
+
+    <script>
+        const canvas = document.getElementById("golfCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // UI Elements
+        const overlay = document.getElementById("overlay");
+        const overlayTitle = document.getElementById("overlay-title");
+        const holeButtons = document.getElementById("hole-buttons");
+        const gameOverButtons = document.getElementById("game-over-buttons");
+        const holeDisplay = document.getElementById("hole-display");
+        const totalStrokesDisplay = document.getElementById("total-strokes-display");
+
+        // The 3 Hole Layouts
+        const courseLayouts = [
+            { startX: 200, startY: 450, holeX: 200, holeY: 50 },  // Hole 1: Straight
+            { startX: 50,  startY: 450, holeX: 350, holeY: 100 }, // Hole 2: Diagonal Right
+            { startX: 350, startY: 450, holeX: 80,  holeY: 60 }   // Hole 3: Diagonal Left
+        ];
+
+        // Game State Variables
+        let currentHoleIndex = 0;
+        let totalStrokes = 0;
+        let holeStrokes = 0;
+        let won = false;
+
+        // Physics Objects
+        let ball = { x: 0, y: 0, vx: 0, vy: 0, radius: 8 };
+        let hole = { x: 0, y: 0, radius: 12 };
+        
+        // Dragging State
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let currentMouseX = 0;
+        let currentMouseY = 0;
+
+        // --- GAME LOGIC FUNCTIONS ---
+
+        function loadHole(index) {
+            currentHoleIndex = index;
+            holeStrokes = 0;
+            won = false;
+            
+            // Set ball and hole positions based on the current layout
+            ball.x = courseLayouts[index].startX;
+            ball.y = courseLayouts[index].startY;
+            ball.vx = 0;
+            ball.vy = 0;
+            hole.x = courseLayouts[index].holeX;
+            hole.y = courseLayouts[index].holeY;
+            
+            // Update Text
+            holeDisplay.innerText = currentHoleIndex + 1;
+            totalStrokesDisplay.innerText = totalStrokes;
+            
+            // Hide menu
+            overlay.style.display = "none";
+        }
+
+        function triggerHoleMenu() {
+            won = true;
+            overlay.style.display = "flex"; // Show the overlay
+            
+            if (currentHoleIndex < courseLayouts.length - 1) {
+                // There are still holes left
+                overlayTitle.innerText = "Hole in " + holeStrokes + "!";
+                holeButtons.style.display = "block";
+                gameOverButtons.style.display = "none";
+            } else {
+                // Game Over
+                overlayTitle.innerText = "Course Complete!";
+                let finalScore = totalStrokes + holeStrokes; // Add final hole strokes
+                document.getElementById("final-score-text").innerText = "You finished the course in " + finalScore + " total strokes.";
+                holeButtons.style.display = "none";
+                gameOverButtons.style.display = "block";
+            }
+        }
+
+        // --- BUTTON CLICKS ---
+
+        function nextHole() {
+            totalStrokes += holeStrokes; // Add this hole's strokes to the grand total
+            loadHole(currentHoleIndex + 1);
+        }
+
+        function replayHole() {
+            // Because totalStrokes is only updated in nextHole(), we can just reload 
+            // the current hole and it will naturally wipe the current holeStrokes.
+            loadHole(currentHoleIndex);
+        }
+
+        function restartGame() {
+            totalStrokes = 0;
+            loadHole(0);
+        }
+
+        // --- MOUSE EVENTS ---
+
+        // We keep mousedown on the canvas so you have to start the click inside the game area
+        canvas.addEventListener("mousedown", (e) => {
+            if (won) return;
+            // Only allow aiming if the ball is basically stopped
+            if (Math.abs(ball.vx) < 0.1 && Math.abs(ball.vy) < 0.1) {
+                isDragging = true;
+                const rect = canvas.getBoundingClientRect();
+                dragStartX = e.clientX - rect.left;
+                dragStartY = e.clientY - rect.top;
+                
+                // Set current mouse to start position so the aim line doesn't jump
+                currentMouseX = dragStartX;
+                currentMouseY = dragStartY;
+            }
+        });
+
+        // We change mousemove to 'window' so it tracks your aim even if you drag outside the game box
+        window.addEventListener("mousemove", (e) => {
+            if (isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                currentMouseX = e.clientX - rect.left;
+                currentMouseY = e.clientY - rect.top;
+            }
+        });
+
+        // We change mouseup to 'window' so it registers the shot no matter where your mouse is!
+        window.addEventListener("mouseup", (e) => {
+            if (isDragging) {
+                isDragging = false;
+                holeStrokes++; // Count the stroke
+                
+                let dx = dragStartX - currentMouseX;
+                let dy = dragStartY - currentMouseY;
+                
+                let power = 0.15; 
+                ball.vx = dx * power;
+                ball.vy = dy * power;
+            }
+        });
+
+        // --- MAIN GAME LOOP ---
+
+        function update() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Hole
+            ctx.fillStyle = "#1e4d2b";
+            ctx.beginPath();
+            ctx.arc(hole.x, hole.y, hole.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 2. Update Ball Physics
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // Apply friction
+            ball.vx *= 0.97;
+            ball.vy *= 0.97;
+
+            // Wall Bounces
+            if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
+                ball.vx *= -1; 
+                ball.x = Math.max(ball.radius, Math.min(ball.x, canvas.width - ball.radius)); 
+            }
+            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
+                ball.vy *= -1; 
+                ball.y = Math.max(ball.radius, Math.min(ball.y, canvas.height - ball.radius)); 
+            }
+
+            // Hole Collision Trigger
+            let distToHole = Math.hypot(ball.x - hole.x, ball.y - hole.y);
+            if (distToHole < hole.radius && Math.abs(ball.vx) < 3 && Math.abs(ball.vy) < 3 && !won) {
+                ball.vx = 0;
+                ball.vy = 0;
+                ball.x = hole.x;
+                ball.y = hole.y;
+                triggerHoleMenu(); // Call the menu instead of just printing text
+            }
+
+            // 3. Draw Ball
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 4. Draw Aiming Line
+            if (isDragging) {
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(ball.x, ball.y);
+                ctx.lineTo(ball.x + (dragStartX - currentMouseX), ball.y + (dragStartY - currentMouseY));
+                ctx.stroke();
+            }
+
+            // 5. Draw Stroke Counter on Canvas
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "16px 'Helvetica Neue', Arial, sans-serif";
+            ctx.fillText("Strokes: " + holeStrokes, 10, 20);
+
+            requestAnimationFrame(update);
+        }
+
+        // Initialize the first hole and start the loop
+        loadHole(0);
+        update();
+    </script>
+</body>
+</html>
